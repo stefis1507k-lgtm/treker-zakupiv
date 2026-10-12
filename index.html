@@ -344,7 +344,13 @@ function openCategoryForm(cat) {
   };
 }
 
-if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(() => {});
+if ("serviceWorker" in navigator) {
+  // Коли з'являється нова версія застосунку — один раз перезавантажуємо сторінку, щоб вона одразу показалась.
+  const hadController = Boolean(navigator.serviceWorker.controller);
+  let reloaded = false;
+  navigator.serviceWorker.addEventListener("controllerchange", () => { if (hadController && !reloaded && !$layer.innerHTML) { reloaded = true; location.reload(); } });
+  navigator.serviceWorker.register("sw.js", { updateViaCache: "none" }).then((r) => r.update()).catch(() => {});
+}
 // Коли застосунок розгортають, підтягуємо свіжі дані (не частіше ніж раз на 20 секунд).
 document.addEventListener("visibilitychange", () => {
   if (document.visibilityState === "visible" && state.key && Date.now() - lastLoad > 20000) load();
