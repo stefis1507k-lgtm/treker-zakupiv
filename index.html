@@ -23,31 +23,26 @@ button{cursor:pointer}
 header{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px}
 header b{font-size:19px}
 .iconbtn{border:1px solid var(--line);background:var(--card);border-radius:99px;min-width:44px;height:40px;padding:0 12px;font-size:18px}
-.hero{position:relative;height:176px;border-radius:26px;overflow:hidden;margin-bottom:12px;background:#ddd url(hero.jpg) center/cover}
-.hero::after{content:"";position:absolute;inset:0;background:linear-gradient(90deg,rgba(255,255,255,.93),rgba(255,255,255,.6) 55%,rgba(255,255,255,0))}
-.hero div{position:relative;z-index:1;padding:22px;color:#292823}
-.hero p{margin:0}
-.hero strong{display:block;font-size:38px;letter-spacing:-.5px;line-height:1.15;margin:4px 0 10px}
-.pill{display:inline-block;background:rgba(255,255,255,.8);border-radius:99px;padding:4px 12px;font-size:13px}
+.hero{position:relative;height:92px;border-radius:20px;overflow:hidden;margin-bottom:6px;background:#ddd url(hero.jpg) center/cover}
+.hero::after{content:"";position:absolute;inset:0;background:linear-gradient(90deg,rgba(255,255,255,.95),rgba(255,255,255,.6) 60%,rgba(255,255,255,0))}
+.hero div{position:relative;z-index:1;padding:13px 18px;color:#292823}
+.hero p{margin:0;font-size:13px;color:#555}
+.hero strong{display:block;font-size:32px;letter-spacing:-.5px;line-height:1.15}
 .neg strong{color:#a3321f}
-.status{font-size:13px;color:var(--muted);margin:0 4px 14px;min-height:18px}
+.status{font-size:12px;color:var(--muted);margin:0 4px 4px;min-height:16px}
 .status.err{color:var(--red);font-weight:600}
-.month{display:flex;align-items:center;justify-content:space-between;margin:6px 0 4px}
-.month small{color:var(--muted);letter-spacing:.6px}
-.month h1{margin:0;font-size:24px}
+.month{display:flex;align-items:center;justify-content:space-between;margin:0 0 10px}
+.month small{color:var(--muted);font-size:13px}
+.month small .in{font-weight:600}
+.month h1{margin:0;font-size:22px}
 .arrows{display:flex;gap:8px}
-.sums{display:flex;gap:10px;margin:8px 0 14px}
-.sums div{flex:1;background:var(--card);border:1px solid var(--line);border-radius:16px;padding:10px 14px}
-.sums small{display:block;color:var(--muted);font-size:12px}
-.sums b{font-size:17px}
-.cats{display:grid;gap:12px}
-.cat{position:relative;height:112px;border:0;border-radius:20px;overflow:hidden;background:#8a8478 center/cover;color:#fff;text-align:left;padding:0;width:100%}
-.cat::after{content:"";position:absolute;inset:0;background:linear-gradient(90deg,rgba(0,0,0,.62),rgba(0,0,0,.15))}
+.cats{display:grid;gap:10px}
+.cat{position:relative;height:122px;border:0;border-radius:20px;overflow:hidden;background:#8a8478 center/cover;color:#fff;text-align:left;padding:0;width:100%}
+.cat::after{content:"";position:absolute;inset:0;background:linear-gradient(0deg,rgba(0,0,0,.62),rgba(0,0,0,0) 65%)}
 .cat.on{outline:3px solid var(--dark);outline-offset:2px}
-.cat span{position:relative;z-index:1;display:flex;height:100%;align-items:center;justify-content:space-between;padding:0 20px}
-.cat b{font-size:19px;display:block;text-shadow:0 1px 4px rgba(0,0,0,.4)}
-.cat i{font-style:normal;font-size:16px}
-.cat em{font-style:normal;background:#fff;color:#000;border-radius:99px;width:40px;height:40px;display:grid;place-items:center;font-size:22px}
+.cat span{position:absolute;z-index:1;left:16px;right:14px;bottom:12px;display:flex;align-items:flex-end;justify-content:space-between;gap:10px}
+.cat b{font-size:20px;display:block;text-shadow:0 1px 4px rgba(0,0,0,.45)}
+.cat i{font-style:normal;font-size:17px;font-weight:600;background:rgba(255,255,255,.93);color:#292823;border-radius:99px;padding:3px 12px;white-space:nowrap}
 .cat .hid{font-size:12px;opacity:.85}
 .hist{margin-top:22px;background:var(--card);border-radius:20px;padding:16px 18px;border:1px solid var(--line)}
 .hist h2{margin:0 0 6px;font-size:18px;display:flex;justify-content:space-between;align-items:center}
@@ -170,14 +165,12 @@ function render() {
   const filterName = state.filter ? catById(state.filter)?.name : "";
   $app.innerHTML = `
   <header><b>Закупи для Ані</b><button class="iconbtn" id="menu" aria-label="Меню">•••</button></header>
-  <section class="hero ${balance < 0 ? "neg" : ""}"><div><p>Мій баланс</p><strong>${C.formatPln(balance)}</strong>
-    <span class="pill">${balance < 0 ? "Витратила більше, ніж отримала" : "У мене залишилось"}</span></div></section>
+  <section class="hero ${balance < 0 ? "neg" : ""}"><div><p>${balance < 0 ? "Мій баланс · витратила більше, ніж отримала" : "Мій баланс"}</p><strong>${C.formatPln(balance)}</strong></div></section>
   <div id="status" class="status${state.statusErr ? " err" : ""}">${esc(state.status)}</div>
-  <div class="month"><div><small>ЗА МІСЯЦЬ</small><h1>${C.monthLabel(state.month)}</h1></div>
+  <div class="month"><div><small>Закупи ${C.formatPln(sum.purchases, { sign: false })}${sum.income ? ` · отримано <span class="in">${C.formatPln(sum.income, { sign: false })}</span>` : ""}</small><h1>${C.monthLabel(state.month)}</h1></div>
     <div class="arrows"><button class="iconbtn" id="prev" aria-label="Попередній місяць">‹</button><button class="iconbtn" id="next" aria-label="Наступний місяць">›</button></div></div>
-  <div class="sums"><div><small>Закупи</small><b>${C.formatPln(sum.purchases, { sign: false })}</b></div><div><small>Отримано</small><b class="in">${C.formatPln(sum.income, { sign: false })}</b></div></div>
   <section class="cats">${cats.map((c) => `<button class="cat ${state.filter === c.id ? "on" : ""}" data-cat="${esc(c.id)}" style="background-image:url('${esc(C.imageUrl(c.image))}')">
-    <span><span style="padding:0;display:block"><b>${esc(c.name)}</b><i>${C.formatPln(sum.byCategory[c.id] ?? 0, { sign: false })}</i>${c.hidden ? `<div class="hid">прихована</div>` : ""}</span><em>›</em></span></button>`).join("")}</section>
+    <span><span style="position:static;display:block"><b>${esc(c.name)}</b>${c.hidden ? `<div class="hid">прихована</div>` : ""}</span><i>${C.formatPln(sum.byCategory[c.id] ?? 0, { sign: false })}</i></span></button>`).join("")}</section>
   <section class="hist"><h2>Історія ${state.filter ? `<button class="chip" id="unfilter">${esc(filterName)} ✕</button>` : ""}</h2>
     ${rows || `<div class="empty">За цей місяць записів немає</div>`}</section>
   ${isEditor() ? `<button class="fab" id="add" aria-label="Новий запис">+</button>` : ""}`;
