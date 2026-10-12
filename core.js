@@ -208,5 +208,6 @@ export async function checkToken(token, fetchImpl = fetch) {
 export function imageUrl(image) {
   if (!image) return "";
   if (/^https?:/.test(image)) return image;
+  if (image.startsWith("photos/")) return image; // фото, що входять до сайту
   return `https://raw.githubusercontent.com/${REPO.owner}/${REPO.name}/${REPO.branch}/${image}`;
 }
