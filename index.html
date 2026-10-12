@@ -118,7 +118,13 @@ const catById = (id) => state.data.categories.find((c) => c.id === id);
 
 function setStatus(text, err = false) { state.status = text; state.statusErr = err; const el = document.getElementById("status"); if (el) { el.textContent = text; el.className = "status" + (err ? " err" : ""); } }
 
+let lastLoad = 0, loading = false;
 async function load() {
+  if (loading) return;
+  loading = true; lastLoad = Date.now();
+  try { await loadNow(); } finally { loading = false; }
+}
+async function loadNow() {
   setStatus("Оновлюю…");
   try {
     const r = await C.loadRemote(state.key, state.token);
@@ -339,6 +345,10 @@ function openCategoryForm(cat) {
 }
 
 if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(() => {});
+// Коли застосунок розгортають, підтягуємо свіжі дані (не частіше ніж раз на 20 секунд).
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "visible" && state.key && Date.now() - lastLoad > 20000) load();
+});
 window.addEventListener("hashchange", () => { readKeyFromHash(); state.key = ls.get(LS.key); if (state.key) load(); });
 if (state.key) {
   const cached = ls.get(LS.cache);
