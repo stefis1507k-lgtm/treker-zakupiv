@@ -1,5 +1,5 @@
 // Офлайн-оболонка: кешуємо лише файли застосунку, не дані з GitHub.
-const CACHE = "zakupy-v8";
+const CACHE = "zakupy-v9";
 const SHELL = ["./", "index.html", "core.js", "manifest.json", "hero.jpg", "icons/icon-180.png", "icons/icon-192.png", "icons/icon-512.png"];
 self.addEventListener("install", (e) => { e.waitUntil(caches.open(CACHE).then((c) => c.addAll(SHELL.map((u) => new Request(u, { cache: "reload" }))))); self.skipWaiting(); });
 self.addEventListener("activate", (e) => { e.waitUntil(caches.keys().then((ks) => Promise.all(ks.filter((k) => k !== CACHE).map((k) => caches.delete(k))))); self.clients.claim(); });
