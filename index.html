@@ -32,8 +32,8 @@ header b{font-size:19px}
 .status{font-size:12px;color:var(--muted);margin:0 4px 4px;min-height:16px}
 .status.err{color:var(--red);font-weight:600}
 .month{display:flex;align-items:center;justify-content:space-between;margin:0 0 10px}
-.month small{color:var(--muted);font-size:13px}
-.month small .in{font-weight:600}
+.month .total{color:var(--muted);font-size:15px;margin-top:2px}
+.month .total b{color:var(--ink);font-size:22px;margin-left:4px}
 .month h1{margin:0;font-size:22px}
 .arrows{display:flex;gap:8px}
 .cats{display:grid;gap:10px}
@@ -164,9 +164,9 @@ function render() {
   const filterName = state.filter ? catById(state.filter)?.name : "";
   $app.innerHTML = `
   <header><b>Закупи для Ані</b><button class="iconbtn" id="menu" aria-label="Меню">•••</button></header>
-  <section class="hero ${balance < 0 ? "neg" : ""}"><div><p>${balance < 0 ? "Мій баланс · витратила більше, ніж отримала" : "Мій баланс"}</p><strong>${C.formatPln(balance)}</strong></div></section>
+  <section class="hero ${balance < 0 ? "neg" : ""}"><div><p>${balance < 0 ? "Мій залишок · витратила більше, ніж отримала" : "Мій залишок"}</p><strong>${C.formatPln(balance)}</strong></div></section>
   <div id="status" class="status${state.statusErr ? " err" : ""}">${esc(state.status)}</div>
-  <div class="month"><div><small>Закупи ${C.formatPln(sum.purchases, { sign: false })}${sum.income ? ` · отримано <span class="in">${C.formatPln(sum.income, { sign: false })}</span>` : ""}</small><h1>${C.monthLabel(state.month)}</h1></div>
+  <div class="month"><div><h1>${C.monthLabel(state.month)}</h1><div class="total">Закупи за місяць<b>${C.formatPln(sum.purchases, { sign: false })}</b></div></div>
     <div class="arrows"><button class="iconbtn" id="prev" aria-label="Попередній місяць">‹</button><button class="iconbtn" id="next" aria-label="Наступний місяць">›</button></div></div>
   <section class="cats">${cats.map((c) => `<button class="cat ${state.filter === c.id ? "on" : ""}" data-cat="${esc(c.id)}" style="background-image:url('${esc(C.imageUrl(c.image))}')">
     <span><span style="position:static;display:block"><b>${esc(c.name)}</b>${c.hidden ? `<div class="hid">прихована</div>` : ""}</span><i>${C.formatPln(sum.byCategory[c.id] ?? 0, { sign: false })}</i></span></button>`).join("")}</section>
