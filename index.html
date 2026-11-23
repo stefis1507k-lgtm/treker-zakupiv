@@ -77,6 +77,8 @@ input.amount{font-size:28px;font-weight:700}
 .mrow .nm small{display:block;color:var(--muted)}
 .mrow button{border:1px solid var(--line);background:var(--card);border-radius:10px;width:38px;height:38px;flex:none}
 .note{font-size:14px;color:var(--muted);background:var(--soft);border-radius:14px;padding:12px;margin:10px 0}
+.rcpt{width:100%;max-height:240px;object-fit:contain;border-radius:14px;margin-top:8px;display:block;background:var(--soft)}
+.rcpt[hidden]{display:none}
 .gate{padding-top:12vh;text-align:center}
 .gate p{color:var(--muted)}
 </style>
@@ -221,31 +223,66 @@ function openAddChoice() {
 function openEntryForm(entry) {
   const isNew = !entry.id;
   let type = entry.type, catId = entry.categoryId ?? null;
+  let receiptB64 = null; // нове фото чека (стиснене), ще не збережене
   const visibleCats = state.data.categories.filter((c) => !c.hidden || c.id === catId).sort((a, b) => a.order - b.order);
   const el = sheet(`<h3>${type === "income" ? "Отримала гроші" : "Закупи"} ${closeBtn}</h3>
     <label for="f-amount">Сума, zł</label><input id="f-amount" class="amount" inputmode="decimal" placeholder="0,00" value="${entry.amountGrosz ? C.formatPln(entry.amountGrosz, { sign: false }).replace(/\s|zł/g, "").replace(/ /g, "") : ""}">
     ${type === "purchase" ? `<label>Категорія</label><div class="picks">${visibleCats.map((c) => `<button data-c="${esc(c.id)}" class="${c.id === catId ? "on" : ""}">${esc(c.name)}</button>`).join("")}</div>` : ""}
     <label for="f-date">Дата</label><input id="f-date" type="date" value="${esc(entry.date ?? today())}">
     <label for="f-note">Примітка (не обов'язково)</label><input id="f-note" value="${esc(entry.note ?? "")}" placeholder="${type === "income" ? "Напр.: Аня скинула на карту" : "Напр.: Lidl"}">
+    ${type === "purchase" ? `<label for="f-receipt">Чек (не обов'язково)</label>
+    <input id="f-receipt" type="file" accept="image/*" style="padding:8px">
+    <img id="f-rprev" class="rcpt" alt="Чек" hidden>
+    ${entry.receipt ? `<div class="actions" style="margin-top:8px"><button class="btn ghost" id="f-view" type="button">Показати збережений чек</button></div>` : ""}` : ""}
     <div class="err" id="f-err" role="alert"></div>
     <div class="actions">${isNew ? "" : `<button class="btn danger" id="f-del">Видалити</button>`}<button class="btn" id="f-save">Зберегти</button></div>`);
   wireClose(el);
   el.querySelectorAll("[data-c]").forEach((b) => (b.onclick = () => { catId = b.dataset.c; el.querySelectorAll("[data-c]").forEach((x) => x.classList.toggle("on", x === b)); }));
   const err = el.querySelector("#f-err");
   if (isNew) setTimeout(() => el.querySelector("#f-amount").focus(), 50);
+  const $rprev = el.querySelector("#f-rprev");
+  const showPreview = (src) => { if ($rprev) { $rprev.src = src; $rprev.hidden = false; } };
+  el.querySelector("#f-receipt")?.addEventListener("change", async (ev) => {
+    err.textContent = "";
+    try { receiptB64 = await compressImage(ev.target.files[0]); showPreview("data:image/jpeg;base64," + receiptB64); }
+    catch (e) { receiptB64 = null; err.textContent = e.message; }
+  });
+  el.querySelector("#f-view")?.addEventListener("click", async (ev) => {
+    const btn = ev.currentTarget; btn.disabled = true; btn.textContent = "Відкриваю…"; err.textContent = "";
+    try { const bytes = await C.loadReceipt(entry.receipt, state.key); showPreview(URL.createObjectURL(new Blob([bytes], { type: "image/jpeg" }))); btn.hidden = true; }
+    catch (e) { err.textContent = e.message; }
+    finally { btn.disabled = false; btn.textContent = "Показати збережений чек"; }
+  });
   el.querySelector("#f-save").onclick = async (ev) => {
     let amountGrosz;
     try { amountGrosz = C.toGrosz(el.querySelector("#f-amount").value); } catch (e) { err.textContent = e.message; return; }
     if (type === "purchase" && !catId) { err.textContent = "Обери категорію"; return; }
-    const data = { id: entry.id ?? C.newId(), type, amountGrosz, date: el.querySelector("#f-date").value, categoryId: catId, note: el.querySelector("#f-note").value.trim() };
-    if (await save({ kind: isNew ? "addEntry" : "updateEntry", entry: data }, ev.currentTarget, err)) close();
+    const btn = ev.currentTarget, id = entry.id ?? C.newId();
+    // Спершу завантажуємо новий чек, потім зберігаємо запис, що на нього посилається.
+    let receipt = type === "purchase" ? (entry.receipt ?? null) : null;
+    if (type === "purchase" && receiptB64) {
+      const path = `data/receipts/${id}-${Date.now()}.enc`;
+      btn.disabled = true; btn.textContent = "Завантажую чек…";
+      try { await C.uploadReceipt(path, await C.encryptBytes(C.b64.to(receiptB64), state.key), state.token); receipt = path; btn.disabled = false; btn.textContent = "Зберегти"; }
+      catch (e) { err.textContent = "Не збережено. " + e.message; btn.disabled = false; btn.textContent = "Зберегти"; return; }
+    }
+    const data = { id, type, amountGrosz, date: el.querySelector("#f-date").value, categoryId: catId, note: el.querySelector("#f-note").value.trim(), receipt };
+    const old = entry.receipt && entry.receipt !== receipt ? entry.receipt : null;
+    if (await save({ kind: isNew ? "addEntry" : "updateEntry", entry: data }, btn, err)) {
+      if (old) C.deleteFile(old, state.token).catch(() => {}); // старий чек більше не потрібен
+      close();
+    }
   };
   el.querySelector("#f-del")?.addEventListener("click", () => {
     const what = `${type === "income" ? "Отримала гроші" : catById(catId)?.name ?? "Закупи"}, ${C.formatPln(entry.amountGrosz, { sign: false })}, ${fmtDay(entry.date)}`;
     const c = sheet(`<h3>Видалити запис?</h3><p>${esc(what)}</p><p class="note">Видалений запис не повернути.</p><div class="err" id="d-err"></div>
       <div class="actions"><button class="btn ghost" id="d-no">Скасувати</button><button class="btn danger" id="d-yes">Так, видалити</button></div>`);
     c.querySelector("#d-no").onclick = () => openEntryForm(entry);
-    c.querySelector("#d-yes").onclick = async (ev) => { if (await save({ kind: "deleteEntry", id: entry.id }, ev.currentTarget, c.querySelector("#d-err"))) close(); };
+    c.querySelector("#d-yes").onclick = async (ev) => {
+      if (!await save({ kind: "deleteEntry", id: entry.id }, ev.currentTarget, c.querySelector("#d-err"))) return;
+      if (entry.receipt) C.deleteFile(entry.receipt, state.token).catch(() => {}); // чек видаляємо разом із записом
+      close();
+    };
   });
 }
 

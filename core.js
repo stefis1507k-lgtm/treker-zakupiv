@@ -151,6 +151,22 @@ export async function decryptData(fileText, keyString) {
   }
 }
 
+// Фото чеків шифруються тим самим ключем, що й дані: у репозиторії лежить лише шифротекст.
+export async function encryptBytes(bytes, keyString) {
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const ct = new Uint8Array(await crypto.subtle.encrypt({ name: "AES-GCM", iv }, await importKey(keyString), bytes));
+  return JSON.stringify({ v: 1, iv: b64.from(iv), ct: b64.from(ct) });
+}
+
+export async function decryptBytes(fileText, keyString) {
+  const f = JSON.parse(fileText);
+  try {
+    return new Uint8Array(await crypto.subtle.decrypt({ name: "AES-GCM", iv: b64.to(f.iv) }, await importKey(keyString), b64.to(f.ct)));
+  } catch {
+    throw new Error("Чек не відкрився. Ключ не підходить");
+  }
+}
+
 // UTF-8 текст <-> base64 для GitHub Contents API
 export const utf8b64 = {
   from: (text) => b64.from(enc.encode(text)),
@@ -196,6 +212,27 @@ export async function commitOp(op, keyString, token, fetchImpl = fetch) {
 export async function uploadPhoto(path, base64Jpeg, token, fetchImpl = fetch) {
   const r = await putFile(path, base64Jpeg, "Фото категорії", token, null, fetchImpl);
   if (!r.ok) throw new Error(`Фото не завантажено (${r.status})`);
+}
+
+export async function uploadReceipt(path, encryptedText, token, fetchImpl = fetch) {
+  const r = await putFile(path, utf8b64.from(encryptedText), "Фото чека", token, null, fetchImpl);
+  if (!r.ok) throw new Error(`Чек не завантажено (${r.status})`);
+}
+
+export async function loadReceipt(path, keyString, fetchImpl = fetch) {
+  const r = await fetchImpl(`https://raw.githubusercontent.com/${REPO.owner}/${REPO.name}/${REPO.branch}/${path}?t=${Date.now()}`, { cache: "no-store" });
+  if (!r.ok) throw new Error(`Чек не відкрився (${r.status})`);
+  return decryptBytes(await r.text(), keyString);
+}
+
+// Видаляє файл з репозиторію. Якщо файлу вже немає, нічого не робить.
+export async function deleteFile(path, token, fetchImpl = fetch) {
+  const headers = ghHeaders(token);
+  const meta = await fetchImpl(`${API}${path}?ref=${REPO.branch}&t=${Date.now()}`, { headers, cache: "no-store" });
+  if (!meta.ok) return;
+  const { sha } = await meta.json();
+  const r = await fetchImpl(API + path, { method: "DELETE", headers: { ...headers, "Content-Type": "application/json" }, body: JSON.stringify({ message: "Видалення чека", sha, branch: REPO.branch }) });
+  if (!r.ok) throw new Error(`Чек не видалено (${r.status})`);
 }
 
 export async function checkToken(token, fetchImpl = fetch) {
